@@ -52,6 +52,16 @@ I Was Here -  программный продукт, который отобра
 Логическая схема
 ![[Pasted image 20261101225415.png]]
 
+PostgresSQL
+
+| Название | Тип         | NOT NULL | ...                                        |
+| -------- | ----------- | -------- | ------------------------------------------ |
+| id       | SERIAL      |          |                                            |
+| version  | INTEGER     | NOT NULL |                                            |
+| login    | VARCHAR(32) | NOT NULL | CHECK(char_length(login) BETWEEN 3 AND 32) |
+| password | VARCHAR(64) | NOT NULL |                                            |
+
+
 # 📄REST-API
 
 | №   | Функциональность                     | Метод  | URL                                   |
