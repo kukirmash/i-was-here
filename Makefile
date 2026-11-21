@@ -12,7 +12,7 @@ env-down:
 env-cleanup:
 	@read -p "Очистить все volume файлы окружения? [y/N]:" ans; \
 	if [ "$$ans" = "y" ]; then \
-		docker compose down iwh-postgres && \
+		docker compose down iwh-postgres port-forwarder && \
 		sudo rm -rf out/pgdata && \
 		echo "Файлы окружения очищены"; \
 	else \
@@ -52,3 +52,7 @@ migrate-up:
 migrate-down:
 	@make migrate-action action=down
 
+iwh-run:
+	@export LOGGER_FOLDER=${PROJECT_ROOT}/out/logs && \
+	export POSTGRES_HOST=localhost && \
+	go run cmd/api/main.go
