@@ -1,0 +1,20 @@
+name: i_was_here_client
+description: >-
+  Клиент «I Was Here»: список пользователей из REST API и процедурный
+  срез агата, детерминированно построенный по created_at пользователя.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.2
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

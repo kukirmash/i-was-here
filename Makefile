@@ -56,3 +56,10 @@ iwh-run:
 	@export LOGGER_FOLDER=${PROJECT_ROOT}/out/logs && \
 	export POSTGRES_HOST=localhost && \
 	go run cmd/api/main.go
+
+web-run:
+	@docker compose up -d --build iwh-web
+	@echo "Клиент: http://127.0.0.1:8081"
+
+web-down:
+	@docker compose down iwh-web
