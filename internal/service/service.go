@@ -12,9 +12,9 @@ import (
 type UserRepository interface {
 	Create(ctx context.Context, user models.User) (models.User, error)
 	GetUsers(ctx context.Context, limit, cursor int) ([]models.User, error)
-	// GetByID(ctx context.Context, id int) (models.User, error)
-	// Update(ctx context.Context, id int, newLogin, newPassword *string) (models.User, error)
-	// Delete(ctx context.Context, id int) error
+	GetByID(ctx context.Context, id int) (models.User, error)
+	Update(ctx context.Context, id int, user models.User) (models.User, error)
+	Delete(ctx context.Context, id int) error
 }
 
 // ------------------------------------------------------------------------
@@ -36,10 +36,10 @@ func (s *UserService) Create(ctx context.Context, login, password string) (model
 		return models.User{}, fmt.Errorf("hash password: %w", err)
 	}
 
-	var user models.User = models.User{
+	user := models.User{
 		Login:     login,
 		Password:  passwordHash,
-		CreatedAt: time.Now(),
+		CreatedAt: time.Now().UTC(),
 	}
 
 	createdUser, err := s.repository.Create(ctx, user)
@@ -80,19 +80,52 @@ func (s *UserService) GetUsers(ctx context.Context, limit, cursor int) (models.U
 	}, nil
 }
 
-// // ------------------------------------------------------------------------
-// func (s *UserService) GetByID(ctx context.Context, id int) (models.User, error) {
+// ------------------------------------------------------------------------
+func (s *UserService) GetByID(ctx context.Context, id int) (models.User, error) {
+	user, err := s.repository.GetByID(ctx, id)
+	if err != nil {
+		return models.User{}, fmt.Errorf("get user: %w", err)
+	}
 
-// }
+	return user, nil
+}
 
-// // ------------------------------------------------------------------------
-// func (s *UserService) Update(ctx context.Context, id int, newLogin, newPassword *string) (models.User, error) {
+// ------------------------------------------------------------------------
+func (s *UserService) Update(ctx context.Context, id int, patch models.UserPatch) (models.User, error) {
+	user, err := s.repository.GetByID(ctx, id)
+	if err != nil {
+		return models.User{}, fmt.Errorf("get user: %w", err)
+	}
 
-// }
+	if patch.Password != nil {
+		hash, err := HashPassword(*patch.Password)
+		if err != nil {
+			return models.User{}, fmt.Errorf("hash password: %w", err)
+		}
+		patch.Password = &hash
+	}
 
-// // ------------------------------------------------------------------------
-// func (s *UserService) Delete(ctx context.Context, id int) {
+	if patch.HasChanges() == false {
+		return user, nil
+	}
 
-// }
+	user.ApplyPatch(patch)
+
+	updatedUser, err := s.repository.Update(ctx, id, user)
+	if err != nil {
+		return models.User{}, fmt.Errorf("update user: %w", err)
+	}
+
+	return updatedUser, nil
+}
+
+// ------------------------------------------------------------------------
+func (s *UserService) Delete(ctx context.Context, id int) error {
+	if err := s.repository.Delete(ctx, id); err != nil {
+		return fmt.Errorf("delete user: %w", err)
+	}
+
+	return nil
+}
 
 // ------------------------------------------------------------------------

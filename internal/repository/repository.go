@@ -82,3 +82,75 @@ func (r *UserRepository) GetUsers(ctx context.Context, limit, cursor int) ([]mod
 }
 
 // ------------------------------------------------------------------------
+func (r *UserRepository) GetByID(ctx context.Context, id int) (models.User, error) {
+	query := `
+	SELECT id, version, login, password, created_at
+	FROM iwh.users
+	WHERE iwh.users.id = $1`
+
+	row := r.pool.QueryRow(ctx, query, id)
+
+	var user models.User
+	err := row.Scan(
+		&user.ID,
+		&user.Version,
+		&user.Login,
+		&user.Password,
+		&user.CreatedAt,
+	)
+	if err != nil {
+		return models.User{}, fmt.Errorf("scan user: %w", err)
+	}
+
+	return user, nil
+}
+
+// ------------------------------------------------------------------------
+func (r *UserRepository) Update(ctx context.Context, id int, user models.User) (models.User, error) {
+	query := `
+	UPDATE iwh.users
+	SET
+		login=$1,
+		password=$2,
+		version=version+1
+	WHERE id=$3 AND version=$4
+	RETURNING
+		id,
+		version,
+		login,
+		created_at`
+
+	row := r.pool.QueryRow(ctx, query, user.Login, user.Password, id, user.Version)
+
+	var updatedUser models.User
+	if err := row.Scan(
+		&updatedUser.ID,
+		&updatedUser.Version,
+		&updatedUser.Login,
+		&updatedUser.CreatedAt,
+	); err != nil {
+		return models.User{}, fmt.Errorf("scan user: %w", err)
+	}
+
+	return updatedUser, nil
+}
+
+// ------------------------------------------------------------------------
+func (r *UserRepository) Delete(ctx context.Context, id int) error {
+	query := `
+	DELETE
+	FROM iwh.users
+	WHERE iwh.users.id = $1`
+
+	cmdTag, err := r.pool.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("exec query: %w", err)
+	}
+	if cmdTag.RowsAffected() == 0 {
+		return fmt.Errorf("not found user")
+	}
+
+	return nil
+}
+
+// ------------------------------------------------------------------------

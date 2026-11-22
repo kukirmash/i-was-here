@@ -1,10 +1,18 @@
 package service
 
-import "golang.org/x/crypto/bcrypt"
+import (
+	"fmt"
+
+	"golang.org/x/crypto/bcrypt"
+)
 
 // -----------------------------------------------------------------------
 // 1. Вызываем при регистрации или смене пароля
 func HashPassword(password string) (string, error) {
+	if len(password) > 72 {
+		return "", fmt.Errorf("password longer than 72 bytes")
+	}
+
 	// занимает ~50-70 мс
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {

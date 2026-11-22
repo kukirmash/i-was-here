@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type User struct {
 	ID        int       `json:"id"`
@@ -13,4 +15,22 @@ type User struct {
 type UserPage struct {
 	Users      []User `json:"users"`
 	NextCursor *int   `json:"next_cursor"`
+}
+
+type UserPatch struct {
+	Login    *string
+	Password *string
+}
+
+func (u *User) ApplyPatch(p UserPatch) {
+	if p.Login != nil {
+		u.Login = *p.Login
+	}
+	if p.Password != nil {
+		u.Password = *p.Password
+	}
+}
+
+func (p *UserPatch) HasChanges() bool {
+	return p.Login != nil || p.Password != nil
 }

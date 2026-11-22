@@ -29,6 +29,7 @@ func NewConnectionPool(ctx context.Context, config Config) (*pgxpool.Pool, error
 	}
 
 	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
 		return nil, fmt.Errorf("ping pgxpool: %w", err)
 	}
 
