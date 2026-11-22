@@ -1,0 +1,11 @@
+{
+    "name": "I Was Here",
+    "short_name": "I Was Here",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#14161A",
+    "theme_color": "#14161A",
+    "description": "Срез агата, построенный по времени регистрации.",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false
+}

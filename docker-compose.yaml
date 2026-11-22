@@ -21,3 +21,15 @@ services:
     command: tcp-listen:5432,fork,reuseaddr tcp-connect:iwh-postgres:5432
     ports:
       - "127.0.0.1:5432:5432"
+
+  iwh-web:
+    build: ./client
+    container_name: iwh-web
+    ports:
+      - "127.0.0.1:8081:80"
+    environment:
+      # API запускается на хосте (`make iwh-run`), поэтому nginx ходит наружу.
+      - API_UPSTREAM=${API_UPSTREAM:-host.docker.internal:8080}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
