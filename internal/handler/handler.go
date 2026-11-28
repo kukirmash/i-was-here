@@ -3,11 +3,13 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/kukirmash/i-was-here/internal/apperr"
 	"github.com/kukirmash/i-was-here/internal/models"
 )
 
@@ -75,7 +77,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 			slog.String("login", input.Login),
 			slog.Any("err", err),
 		)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		h.responseError(w, err)
 		return
 	}
 
@@ -125,7 +127,7 @@ func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	userPage, err := h.service.GetUsers(ctx, limit, cursor)
 	if err != nil {
 		h.logger.Error("failed to get user page", slog.Any("err", err))
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		h.responseError(w, err)
 		return
 	}
 
@@ -170,7 +172,7 @@ func (h *UserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	user, err := h.service.GetByID(ctx, id)
 	if err != nil {
 		h.logger.Error("failed to get user", slog.Any("err", err))
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		h.responseError(w, err)
 		return
 	}
 
@@ -236,7 +238,7 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	user, err := h.service.Update(ctx, id, patch)
 	if err != nil {
 		h.logger.Error("failed to patch user", slog.Any("err", err))
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		h.responseError(w, err)
 		return
 	}
 
@@ -278,13 +280,27 @@ func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.service.Delete(ctx, id); err != nil {
 		h.logger.Error("failed to delete user", slog.Any("err", err))
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		h.responseError(w, err)
 		return
 	}
 
 	h.logger.Info("delete user", slog.Int("id", id))
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// ------------------------------------------------------------------------
+func (h *UserHandler) responseError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, apperr.ErrNotFound):
+		http.Error(w, "not found", http.StatusNotFound)
+	case errors.Is(err, apperr.ErrAlreadyExists):
+		http.Error(w, "already exists", http.StatusConflict)
+	case errors.Is(err, apperr.ErrInvalidPassword):
+		http.Error(w, "invalid password", http.StatusBadRequest)
+	default:
+		http.Error(w, "internal error", http.StatusInternalServerError)
+	}
 }
 
 // ------------------------------------------------------------------------

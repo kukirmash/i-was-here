@@ -2,9 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kukirmash/i-was-here/internal/apperr"
 	"github.com/kukirmash/i-was-here/internal/models"
 )
 
@@ -37,7 +41,11 @@ func (r *UserRepository) Create(ctx context.Context, user models.User) (models.U
 		&createdUser.CreatedAt,
 	)
 	if err != nil {
-		return models.User{}, fmt.Errorf("scan error: %w", err)
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return models.User{}, fmt.Errorf("create user: %w: %w", apperr.ErrAlreadyExists, err)
+		}
+		return models.User{}, fmt.Errorf("scan user: %w", err)
 	}
 
 	return createdUser, nil
@@ -99,6 +107,9 @@ func (r *UserRepository) GetByID(ctx context.Context, id int) (models.User, erro
 		&user.CreatedAt,
 	)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.User{}, fmt.Errorf("get user: %w", apperr.ErrNotFound)
+		}
 		return models.User{}, fmt.Errorf("scan user: %w", err)
 	}
 
@@ -129,6 +140,13 @@ func (r *UserRepository) Update(ctx context.Context, id int, user models.User) (
 		&updatedUser.Login,
 		&updatedUser.CreatedAt,
 	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.User{}, fmt.Errorf("update user: %w", apperr.ErrNotFound)
+		}
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return models.User{}, fmt.Errorf("update user: %w: %w", apperr.ErrAlreadyExists, err)
+		}
 		return models.User{}, fmt.Errorf("scan user: %w", err)
 	}
 
@@ -147,7 +165,7 @@ func (r *UserRepository) Delete(ctx context.Context, id int) error {
 		return fmt.Errorf("exec query: %w", err)
 	}
 	if cmdTag.RowsAffected() == 0 {
-		return fmt.Errorf("not found user")
+		return fmt.Errorf("delete user: %w", apperr.ErrNotFound)
 	}
 
 	return nil

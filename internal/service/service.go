@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kukirmash/i-was-here/internal/apperr"
 	"github.com/kukirmash/i-was-here/internal/models"
 )
 
@@ -33,7 +34,7 @@ func NewUserService(repository UserRepository) *UserService {
 func (s *UserService) Create(ctx context.Context, login, password string) (models.User, error) {
 	passwordHash, err := HashPassword(password)
 	if err != nil {
-		return models.User{}, fmt.Errorf("hash password: %w", err)
+		return models.User{}, fmt.Errorf("hash password: %w: %w", err, apperr.ErrInvalidPassword)
 	}
 
 	user := models.User{
@@ -100,7 +101,7 @@ func (s *UserService) Update(ctx context.Context, id int, patch models.UserPatch
 	if patch.Password != nil {
 		hash, err := HashPassword(*patch.Password)
 		if err != nil {
-			return models.User{}, fmt.Errorf("hash password: %w", err)
+			return models.User{}, fmt.Errorf("hash password: %w: %w", err, apperr.ErrInvalidPassword)
 		}
 		patch.Password = &hash
 	}
