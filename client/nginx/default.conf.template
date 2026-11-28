@@ -13,6 +13,21 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # Бандл пересобирается без хешей в именах, поэтому кэш браузера
+    # отдаёт старую версию. Точки входа и код запрещаем кэшировать.
+    location = /index.html {
+        add_header Cache-Control "no-store";
+    }
+    location = /flutter_bootstrap.js {
+        add_header Cache-Control "no-store";
+    }
+    location = /flutter_service_worker.js {
+        add_header Cache-Control "no-store";
+    }
+    location ~* \.(?:js|mjs|wasm|json)$ {
+        add_header Cache-Control "no-cache";
+    }
+
     # Flutter web: любой путь отдаёт index.html (клиентская навигация).
     location / {
         try_files $uri $uri/ /index.html;

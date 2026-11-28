@@ -7,7 +7,7 @@ RUN flutter pub get
 
 COPY lib ./lib
 COPY web ./web
-RUN flutter build web --release --dart-define=API_BASE=
+RUN flutter build web --release --pwa-strategy=none --dart-define=API_BASE=
 
 FROM nginx:1.27-alpine
 

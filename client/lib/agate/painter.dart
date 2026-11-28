@@ -522,11 +522,13 @@ class AgateArtwork {
       const Color(0x40B45EFF),
       const Color(0x40FF5E7A),
     ];
+    // Sweep-градиент с шестью цветами требует явных остановок.
+    final stops = <double>[0, 0.2, 0.4, 0.6, 0.8, 1];
     final paint = Paint()
       ..shader = ui.Gradient.sweep(
         const Offset(0, 0),
         colors,
-        null,
+        stops,
         ui.TileMode.clamp,
         startAngle,
         startAngle + 2 * math.pi,

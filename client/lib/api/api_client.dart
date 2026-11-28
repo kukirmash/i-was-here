@@ -27,10 +27,13 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-enum _Operation { read, create, update, delete }
-
 /// Тонкий клиент REST API. Все запросы идут через [_request], где живёт
-/// единственное место адаптации под текущий бэкенд.
+/// единственное место перевода HTTP-кодов в понятные сообщения.
+///
+/// Бэкенд отдаёт ошибки простым текстом:
+/// 400 — `invalid request body`, `validate error`, `invalid password`,
+/// `invalid user id`, `negative or zero user id`, `invalid query params`;
+/// 404 — `not found`; 409 — `already exists`.
 class ApiClient {
   ApiClient({String? baseUrl, http.Client? httpClient})
       : _base = _stripSlash(
@@ -60,7 +63,6 @@ class ApiClient {
       'GET',
       '/users',
       query: <String, String>{'limit': '$limit', 'cursor': '$cursor'},
-      operation: _Operation.read,
     );
     final raw = json['users'];
     final users = raw is List
@@ -81,17 +83,12 @@ class ApiClient {
       'POST',
       '/users',
       body: <String, Object?>{'login': login, 'password': password},
-      operation: _Operation.create,
     );
     return User.fromJson(json);
   }
 
   Future<User> getUser(int id) async {
-    final json = await _request(
-      'GET',
-      '/users/$id',
-      operation: _Operation.read,
-    );
+    final json = await _request('GET', '/users/$id');
     return User.fromJson(json);
   }
 
@@ -111,17 +108,12 @@ class ApiClient {
         message: 'Нечего сохранять: заполните хотя бы одно поле.',
       );
     }
-    final json = await _request(
-      'PATCH',
-      '/users/$id',
-      body: body,
-      operation: _Operation.update,
-    );
+    final json = await _request('PATCH', '/users/$id', body: body);
     return User.fromJson(json);
   }
 
   Future<void> deleteUser(int id) async {
-    await _request('DELETE', '/users/$id', operation: _Operation.delete);
+    await _request('DELETE', '/users/$id');
   }
 
   void close() => _http.close();
@@ -138,7 +130,6 @@ class ApiClient {
     String path, {
     Map<String, String>? query,
     Map<String, Object?>? body,
-    required _Operation operation,
   }) async {
     final request = http.Request(method, _uri(path, query));
     if (body != null) {
@@ -176,15 +167,12 @@ class ApiClient {
       );
     }
 
-    throw _mapFailure(response.statusCode, text, operation);
+    throw _mapFailure(response.statusCode, text);
   }
 
-  ApiException _mapFailure(
-    int status,
-    String detail,
-    _Operation operation,
-  ) {
+  ApiException _mapFailure(int status, String detail) {
     final code = detail.isEmpty ? null : detail;
+
     switch (status) {
       case 400:
         return ApiException(
@@ -197,53 +185,26 @@ class ApiClient {
         return const ApiException(
           kind: ApiErrorKind.notFound,
           statusCode: 404,
-          message: 'Пользователь не найден.',
+          message: 'Пользователь не найден: возможно, его уже удалили.',
         );
       case 409:
         return const ApiException(
           kind: ApiErrorKind.conflict,
           statusCode: 409,
-          message: 'Логин уже занят.',
+          message: 'Логин уже занят другим пользователем.',
         );
-      case 500:
-        return _mapServerError(operation, code);
+      case 405:
+        return const ApiException(
+          kind: ApiErrorKind.server,
+          statusCode: 405,
+          message: 'Сервер не поддерживает этот метод.',
+        );
       default:
         return ApiException(
           kind: ApiErrorKind.server,
           statusCode: status,
           detail: code,
-          message: 'Сервер ответил кодом $status.',
-        );
-    }
-  }
-
-  /// Бэкенд пока отдаёт `500 internal error` вместо 404/409/400.
-  /// Различить причины по телу нельзя, поэтому опираемся на операцию:
-  /// отсутствующий ресурс возможен только у чтения, изменения и удаления;
-  /// конфликт логина — только у создания и переименования.
-  ApiException _mapServerError(_Operation operation, String? detail) {
-    const serverStatus = 500;
-    switch (operation) {
-      case _Operation.read:
-      case _Operation.delete:
-        return const ApiException(
-          kind: ApiErrorKind.notFound,
-          statusCode: serverStatus,
-          message: 'Пользователя нет: возможно, запись уже удалили.',
-        );
-      case _Operation.create:
-        return const ApiException(
-          kind: ApiErrorKind.conflict,
-          statusCode: serverStatus,
-          message: 'Логин уже занят или пароль длиннее 72 байт.',
-        );
-      case _Operation.update:
-        return const ApiException(
-          kind: ApiErrorKind.conflict,
-          statusCode: serverStatus,
-          message:
-              'Изменить не удалось: логин занят, пользователя нет или пароль '
-              'длиннее 72 байт.',
+          message: 'Сервер ответил ошибкой $status. Попробуйте позже.',
         );
     }
   }
@@ -254,6 +215,8 @@ class ApiClient {
         return 'Некорректное тело запроса: проверьте JSON и типы полей.';
       case 'validate error':
         return 'Проверьте поля: логин 3–32 символа, пароль 8–64 символа.';
+      case 'invalid password':
+        return 'Пароль длиннее 72 байт. Для кириллицы это около 36 символов.';
       case 'invalid query params':
         return 'Некорректные параметры пагинации.';
       case 'invalid user id':

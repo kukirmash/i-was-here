@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
 import '../models/user.dart';
+import '../theme/palette.dart';
 
 /// Одна форма на все три сценария: создание, переименование, смена пароля.
 /// Поля, которых нет в сценарии, не показываются и не отправляются.
@@ -66,58 +67,64 @@ class _UserFormDialogState extends State<UserFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       title: Text(widget.title),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              if (widget.showLogin)
-                TextFormField(
-                  controller: _login,
-                  autofocus: widget.showLogin,
-                  enabled: !_busy,
-                  decoration: const InputDecoration(
-                    labelText: 'Логин',
-                    helperText: '3–32 символа, без пробелов по краям',
+      content: SizedBox(
+        width: 420,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                if (widget.showLogin)
+                  TextFormField(
+                    controller: _login,
+                    autofocus: widget.showLogin,
+                    enabled: !_busy,
+                    decoration: const InputDecoration(
+                      labelText: 'Логин',
+                      helperText: '3–32 символа, без пробелов по краям',
+                    ),
+                    validator: validateLogin,
+                    onFieldSubmitted: (_) => _submit(),
                   ),
-                  validator: validateLogin,
-                  onFieldSubmitted: (_) => _submit(),
-                ),
-              if (widget.showLogin && widget.showPassword)
-                const SizedBox(height: 12),
-              if (widget.showPassword)
-                TextFormField(
-                  controller: _password,
-                  autofocus: !widget.showLogin,
-                  enabled: !_busy,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Пароль',
-                    helperText: '8–64 символа, не длиннее 72 байт',
+                if (widget.showLogin && widget.showPassword)
+                  const SizedBox(height: 14),
+                if (widget.showPassword)
+                  TextFormField(
+                    controller: _password,
+                    autofocus: !widget.showLogin,
+                    enabled: !_busy,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Пароль',
+                      helperText: '8–64 символа, не длиннее 72 байт',
+                    ),
+                    validator: (value) => validatePassword(value),
+                    onFieldSubmitted: (_) => _submit(),
                   ),
-                  validator: (value) => validatePassword(value),
-                  onFieldSubmitted: (_) => _submit(),
-                ),
-              if (_error != null) ...<Widget>[
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
+                if (_error != null) ...<Widget>[
+                  const SizedBox(height: 18),
+                  Text(
                     _error!,
-                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      height: 1.45,
+                      color: Palette.danger,
+                    ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
       actions: <Widget>[
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('Отмена'),
+          child: const Text('ОТМЕНА'),
         ),
         FilledButton(
           onPressed: _busy ? null : _submit,
@@ -126,7 +133,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                   dimension: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(widget.submitLabel),
+              : Text(widget.submitLabel.toUpperCase()),
         ),
       ],
     );
@@ -137,7 +144,7 @@ Future<User?> showCreateUserDialog(BuildContext context, ApiClient api) {
   return showDialog<User>(
     context: context,
     builder: (context) => UserFormDialog(
-      title: 'Новый пользователь',
+      title: 'Новый камень',
       showLogin: true,
       showPassword: true,
       submitLabel: 'Создать',
@@ -190,22 +197,28 @@ Future<bool> confirmDeleteUser(
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Удалить пользователя?'),
-      content: Text(
-        '${user.login} (#${user.id}) исчезнет безвозвратно. '
-        'Восстановить запись будет нельзя.',
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      title: const Text('Удалить камень?'),
+      content: SizedBox(
+        width: 420,
+        child: Text(
+          '${user.login} исчезнет безвозвратно: запись удаляется из базы '
+          'физически, восстановить её будет нельзя.',
+          style: const TextStyle(fontSize: 14, height: 1.6),
+        ),
       ),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Отмена'),
+          child: const Text('ОТМЕНА'),
         ),
         FilledButton(
           style: FilledButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.error,
+            backgroundColor: Palette.danger,
+            foregroundColor: const Color(0xFF23100F),
           ),
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Удалить'),
+          child: const Text('УДАЛИТЬ'),
         ),
       ],
     ),
